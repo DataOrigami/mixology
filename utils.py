@@ -1,6 +1,5 @@
-import request 
+from requests import get
 from bs4 import BeautifulSoup
-
 
 
 def find_measures(bsoup, id):
@@ -8,8 +7,8 @@ def find_measures(bsoup, id):
   return [ parse_measures(m, id) for m in measures ]
 
 def find_directions(bsoup, id):
-  directions = bsoup.find_all('div', class="recipeDirection")
-  return [ parse_measures(m, id) for m in measures ]
+  directions = bsoup.find_all('div', class_="recipeDirection")
+  return filter(None, [ parse_directions(m, id) for m in directions ])
 
 
 
@@ -31,8 +30,15 @@ def parse_directions(direction_info, id):
     return "Stir in mixing glass with ice & strain" 
   elif contents[0] == "Add ":
     return contents[1].text
-  elif contents[0] == "Muddle/Shake"
+  else:
+    return None
 
 
-def get_drinks():
+if __name__=="__main__":
+  drink_id = 3819
+  URL = "http://www.cocktaildb.com/recipe_detail?id=%d"%drink_id
+  bs = BeautifulSoup(get(URL).text)
+  print find_directions(bs,drink_id)
+  print find_measures(bs,drink_id)
+
 
