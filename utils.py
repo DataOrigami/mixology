@@ -80,22 +80,28 @@ def df_to_pivot(df):
   return pd.pivot_table(df, values = "volume", rows="id", cols= "ingredient", aggfunc=np.sum, fill_value = 0).astype(float)
 
 
+def clean_data(df):
+  df = merge_columns(df)
+  return df[ df.columns[ df.sum(0)!=0 ]]
+
 def merge_columns(df):
     same_columns = [ 
        ['gold rum', 'golden rum'],
        ['yolk of egg', 'yolk of fresh egg', 'egg yolk'],
-       [ 'canadian club', 'canadian club whisky', 'canadian whiskey', 'canadian whisky'],
+       ['canadian club', 'canadian club whisky', 'canadian whiskey', 'canadian whisky'],
        ['egg white', 'white of an egg'],
        ['worcester sauce', 'worcestershire', 'worcestershire sauce'],
        ['johnnie walker', 'johnny walker'],
        ['creme de vanilla', 'creme de vanille'],
        ['passion fruit juice', 'passion fruit nectar', 'passion fruit syrup'],
        ['vanilla', 'vanilla extract'],
-       ['mint sprig', 'mint sprigs', 'sprigs of mint'],
-       ['lime (or lemon) juice', 'lime juice', 'lemon (or lime) juice', 'lemon juice'],
+       ['mint sprig', 'mint sprigs', 'sprigs of mint', 'mint leaf', 'fresh mint'],
+       ['lime (or lemon) juice', 'lemon (or lime) juice'],
+       ['lime juice', 'fresh lime juice'],
+       ['lemon juice', 'fresh lemon juice'],
        ['orgeat', 'orgeat syrup'],
-       [ 'calisay', 'calisaya'],
-       [ 'clove', 'cloves'],
+       ['calisay', 'calisaya'],
+       ['clove', 'cloves'],
        ['frais','fraise'],
        ['ice','iced'],
        ['jamaica ginger', 'jamaican ginger', 'jamaican ginger extract'],
@@ -132,11 +138,27 @@ def merge_columns(df):
        ['bourbon', 'bourbon whisky'],
        ['campari', 'campari bitters'],
        ['caloric', 'caloric punch'],
+       ['maraschino', 'maraschino liquer'],
+       ['orange juice', 'fresh orange juice'],
+       ['creme of coconut', 'cream of coconut'],
+       ['coffee liqueur', 'coffee liquor'],
+       ['cherry flavored brandy', 'cherry brandy'],
+       ['bacardi light rum', 'bacardi rum'],
+       ['aurum', 'aurum liqueur'],
+       ['151 proof rum', '151 rum'],
+       ['raspberries', 'raspberry'],
+       ['coffee liqueur', 'coffee liquor'],
+       ['cordial', 'cordial medoc'],
+       ['muscatel', 'muscatel wine'],
+       ['peach brandy', 'peach flavored brandy'],
+       ['peychaud', 'peychaud bitters'],
+       ['liqueur', 'liquor'],
+       ['guava juice', 'guava nectar', 'guava syrup']
 
 
 
-    
     ]
+
     df_ = df.copy()
     for columns in same_columns:
       c_keep = columns[0]
