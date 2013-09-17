@@ -223,6 +223,5 @@ if __name__=="__main__":
   all_measures = parse_volumes( all_measures )
   measures_df = measures_to_df( all_measures, ['id', 'volume', 'ingredient', 'measure'] )
   measures_df = merge_columns( measures_df, EQUAL_INGREDIENTS)
-  #data.to_csv( "drinks%d-%d.csv"%(lower_bound,upper_bound) )
   print "done"
 
