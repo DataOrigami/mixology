@@ -1,9 +1,11 @@
-from requests import get
+from requests import get,ConnectionError
 from bs4 import BeautifulSoup
 import numpy as np
 from fractions import Fraction
 import pandas as pd
 from time import sleep
+
+import pdb
 
 def find_measures(bsoup, id):
   measures = bsoup.find_all('div', class_="recipeMeasure")
@@ -12,6 +14,13 @@ def find_measures(bsoup, id):
 def find_directions(bsoup, id):
   directions = bsoup.find_all('div', class_="recipeDirection")
   return list( set( filter(None, [ parse_directions(m, id) for m in directions ]) ) )
+
+def find_name(bsoup,id):
+  try:
+    name = bsoup.find_all('div', id ='wellTitle')[0].find_all('h2')[0].text
+  except:
+    name = "unknown"
+  return name      
 
 def parse_measures(measure_info, id ):
   """return (id, volume, ingredient, 'measure')"""
@@ -65,100 +74,20 @@ def ounce_to_float(oz_string):
       except IndexError:
         return s
 
-def get_name(bs,id):
-  #todo
-  pass
-
-def measures_to_df(all_measures):
+def measures_to_df(all_measures, columns):
   df = pd.DataFrame.from_records( all_measures,
-                                  columns=['id', 'volume', 'ingredient', 'measure']
+                                  columns=columns
                                   )
-  return df
-  #return q
+  return clean_data(df_to_pivot(df,columns))
 
-def df_to_pivot(df):
-  return pd.pivot_table(df, values = "volume", rows="id", cols= "ingredient", aggfunc=np.sum, fill_value = 0).astype(float)
+def df_to_pivot(df,columns):
+  return pd.pivot_table(df, values = columns[1], rows=columns[0], cols=columns[2], aggfunc=np.sum, fill_value = 0).astype(float)
 
 
 def clean_data(df):
-  df = merge_columns(df)
   return df[ df.columns[ df.sum(0)!=0 ]]
 
-def merge_columns(df):
-    same_columns = [ 
-       ['gold rum', 'golden rum'],
-       ['yolk of egg', 'yolk of fresh egg', 'egg yolk'],
-       ['canadian club', 'canadian club whisky', 'canadian whiskey', 'canadian whisky'],
-       ['egg white', 'white of an egg'],
-       ['worcester sauce', 'worcestershire', 'worcestershire sauce'],
-       ['johnnie walker', 'johnny walker'],
-       ['creme de vanilla', 'creme de vanille'],
-       ['passion fruit juice', 'passion fruit nectar', 'passion fruit syrup'],
-       ['vanilla', 'vanilla extract'],
-       ['mint sprig', 'mint sprigs', 'sprigs of mint', 'mint leaf', 'fresh mint'],
-       ['lime (or lemon) juice', 'lemon (or lime) juice'],
-       ['lime juice', 'fresh lime juice'],
-       ['lemon juice', 'fresh lemon juice'],
-       ['orgeat', 'orgeat syrup'],
-       ['calisay', 'calisaya'],
-       ['clove', 'cloves'],
-       ['frais','fraise'],
-       ['ice','iced'],
-       ['jamaica ginger', 'jamaican ginger', 'jamaican ginger extract'],
-       ['kirsch','kirschwasser'],
-       ['lillet','lillet blanc'],
-       ['shaved ice', 'pieces of shaved ice'],
-       ['dry vermouth', 'vermouth, dry'],
-       ['vieille cure', 'vielle cure'],
-       ['egg', 'eggs','whole egg', 'whole eggs'],
-       ['blackberry brandy', 'blackberry flavored brandy'],
-       ['mandarette', 'mandarinette'],
-       ["myers's", "myers's rum"],
-       ['port', 'port wine'],
-       ['gomme', 'gomme syrup'],
-       ['apricot brandy','apricot flavored brandy'],
-       ["pimm's", "pimm's cup"],
-       ["rose's", "rose's lime juice"],
-       ['sambuca', 'sambucca'],
-       ['sauterne', 'sauterne wine'],
-       ['scotch', 'scotch whisky'],
-       ['tabasco', 'tabasco sauce'],
-       ['angostura', 'angostura bitters'],
-       ['mint leaf', 'mint leaves'],
-       ['limes', 'lime'],
-       ['geneva gin', 'genever gin'],
-       ['jamaica rum', 'jamaican rum'],
-       ['prunella', 'prunelle', 'prunelle liqueur'],
-       ["creme d'yvette",'creme de yvette','creme yvette'],
-       ['creme de noyau', 'creme de noyeau', 'creme de noyeaux'],
-       ['creme de banana', 'creme de banane'],
-       ['ginger brandy', 'ginger flavored brandy'],
-       ['orange flavored gin', 'orange gin'],
-       ['catsup', 'tomato catsup'],
-       ['bourbon', 'bourbon whisky'],
-       ['campari', 'campari bitters'],
-       ['caloric', 'caloric punch'],
-       ['maraschino', 'maraschino liquer'],
-       ['orange juice', 'fresh orange juice'],
-       ['creme of coconut', 'cream of coconut'],
-       ['coffee liqueur', 'coffee liquor'],
-       ['cherry flavored brandy', 'cherry brandy'],
-       ['bacardi light rum', 'bacardi rum'],
-       ['aurum', 'aurum liqueur'],
-       ['151 proof rum', '151 rum'],
-       ['raspberries', 'raspberry'],
-       ['coffee liqueur', 'coffee liquor'],
-       ['cordial', 'cordial medoc'],
-       ['muscatel', 'muscatel wine'],
-       ['peach brandy', 'peach flavored brandy'],
-       ['peychaud', 'peychaud bitters'],
-       ['liqueur', 'liquor'],
-       ['guava juice', 'guava nectar', 'guava syrup']
-
-
-
-    ]
-
+def merge_columns(df, same_columns):
     df_ = df.copy()
     for columns in same_columns:
       c_keep = columns[0]
@@ -166,14 +95,12 @@ def merge_columns(df):
          try:
             df_[c_keep] += df_[c]
             del df_[c]
-         except Exception as e: 
-             print e 
+         except Exception: 
+             pass 
     return df_ 
 
-if __name__=="__main__":
-  upper_bound = 1
-  lower_bound = 4600
-  drink_ids = range(lower_bound,upper_bound)
+def run(upper, lower):
+  drink_ids = range(upper,lower)
   recipes = {}
   for drink_id in drink_ids:
       URL = "http://www.cocktaildb.com/recipe_detail?id=%d"%drink_id
@@ -181,17 +108,121 @@ if __name__=="__main__":
         bs = BeautifulSoup(get(URL).text)
       except ConnectionError as e:
         print e 
-        sleep(10)
+        sleep(3)
         bs = BeautifulSoup(get(URL).text)      
       recipes[drink_id] = {
               "measures":find_measures(bs,drink_id),
-              "directions": find_directions(bs,drink_id)
+              "directions": find_directions(bs,drink_id),
+              "name": find_name(bs,drink_id)
       } 
-      print drink_id 
+      print recipes[drink_id]["name"] 
+      sleep(0.2)
+
+  return recipes
+
+EQUAL_DIRECTIONS = [
+      ["orange slice", "orange slices"],
+      ["lime slice", "lime shell", "lime wedge", "lime wheel"],
+      ["lemon slice", "lemon shell", "lemon wedge", "lemon wheel"],
+      ["mint sprigs", "mint sprig", "mint leaves", "mint leaf"],
+      ["pineapple slices", "pineapple slice", "piece of pineapple"],
+      ["pineapple chunks", "pineapple chunk"],
+      ["cloves", "clove"],
+      ["black cherries", "black cherry"],
+      ["almonds", "almond"],
+      ["Top with whipped cream", "whipped cream"],
+      ["cocktail onion", "onion"]
+    ]
+
+EQUAL_INGREDIENTS = [ 
+     ['gold rum', 'golden rum'],
+     ['yolk of egg', 'yolk of fresh egg', 'egg yolk'],
+     ['canadian club', 'canadian club whisky', 'canadian whiskey', 'canadian whisky'],
+     ['egg white', 'white of an egg'],
+     ['worcester sauce', 'worcestershire', 'worcestershire sauce'],
+     ['johnnie walker', 'johnny walker'],
+     ['creme de vanilla', 'creme de vanille'],
+     ['passion fruit juice', 'passion fruit nectar', 'passion fruit syrup'],
+     ['vanilla', 'vanilla extract'],
+     ['mint sprig', 'mint sprigs', 'sprigs of mint', 'mint leaf', 'fresh mint'],
+     ['lime (or lemon) juice', 'lemon (or lime) juice'],
+     ['lime juice', 'fresh lime juice'],
+     ['lemon juice', 'fresh lemon juice'],
+     ['orgeat', 'orgeat syrup'],
+     ['calisay', 'calisaya'],
+     ['clove', 'cloves'],
+     ['frais','fraise'],
+     ['ice','iced'],
+     ['jamaica ginger', 'jamaican ginger', 'jamaican ginger extract'],
+     ['kirsch','kirschwasser'],
+     ['lillet','lillet blanc'],
+     ['shaved ice', 'pieces of shaved ice'],
+     ['dry vermouth', 'vermouth, dry'],
+     ['vieille cure', 'vielle cure'],
+     ['egg', 'eggs','whole egg', 'whole eggs'],
+     ['blackberry brandy', 'blackberry flavored brandy'],
+     ['mandarette', 'mandarinette'],
+     ["myers's", "myers's rum"],
+     ['port', 'port wine'],
+     ['gomme', 'gomme syrup'],
+     ['apricot brandy','apricot flavored brandy'],
+     ["pimm's", "pimm's cup"],
+     ["rose's", "rose's lime juice"],
+     ['sambuca', 'sambucca'],
+     ['sauterne', 'sauterne wine'],
+     ['scotch', 'scotch whisky'],
+     ['tabasco', 'tabasco sauce'],
+     ['angostura', 'angostura bitters'],
+     ['mint leaf', 'mint leaves'],
+     ['limes', 'lime'],
+     ['geneva gin', 'genever gin'],
+     ['jamaica rum', 'jamaican rum'],
+     ['prunella', 'prunelle', 'prunelle liqueur'],
+     ["creme d'yvette",'creme de yvette','creme yvette'],
+     ['creme de noyau', 'creme de noyeau', 'creme de noyeaux'],
+     ['creme de banana', 'creme de banane'],
+     ['ginger brandy', 'ginger flavored brandy'],
+     ['orange flavored gin', 'orange gin'],
+     ['catsup', 'tomato catsup'],
+     ['bourbon', 'bourbon whisky'],
+     ['campari', 'campari bitters'],
+     ['caloric', 'caloric punch'],
+     ['maraschino', 'maraschino liquer'],
+     ['orange juice', 'fresh orange juice'],
+     ['creme of coconut', 'cream of coconut'],
+     ['coffee liqueur', 'coffee liquor'],
+     ['cherry flavored brandy', 'cherry brandy'],
+     ['bacardi light rum', 'bacardi rum'],
+     ['aurum', 'aurum liqueur'],
+     ['151 proof rum', '151 rum'],
+     ['raspberries', 'raspberry'],
+     ['coffee liqueur', 'coffee liquor'],
+     ['cordial', 'cordial medoc'],
+     ['muscatel', 'muscatel wine'],
+     ['peach brandy', 'peach flavored brandy'],
+     ['peychaud', 'peychaud bitters'],
+     ['liqueur', 'liquor'],
+     ['guava juice', 'guava nectar', 'guava syrup']
+  ]
+
+
+if __name__=="__main__":
+  bounds = range(1, 4300,100)
+  recipes = {}
+  for lower in bounds:
+    recipes.update(run(lower, lower+100))
+    sleep(2)
+    print
+    print len(recipes)
   all_measures = sum( [ v["measures"] for k,v in recipes.iteritems()], [] )
-  all_directions = [v["directions"] for k,v in recipes.iteritems()]
+  all_directions = sum( [v["directions"] for k,v in recipes.iteritems()], [] )
+
+  directions_df = measures_to_df( all_directions, ['id', 'action', 'direction', 'directions'])
+  directions_df = merge_columns( directions_df, EQUAL_DIRECTIONS)
+
   all_measures = parse_volumes( all_measures )
-  data = measures_to_df( all_measures )
-  data.to_csv( "drinks%d-%d.csv"%(lower_bound,upper_bound) )
+  measures_df = measures_to_df( all_measures, ['id', 'volume', 'ingredient', 'measure'] )
+  measures_df = merge_columns( measures_df, EQUAL_INGREDIENTS)
+  #data.to_csv( "drinks%d-%d.csv"%(lower_bound,upper_bound) )
   print "done"
 
