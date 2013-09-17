@@ -1,8 +1,6 @@
 Mixology
 ========
 
-> “Beer's intellectual. What a shame so many idiots drink it.” 
-
 ###Every proper club needs a proper club cocktail.
 
 Can we algorithmically find our club cocktail using a large database of cocktail drinks? Yes.
