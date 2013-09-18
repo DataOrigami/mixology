@@ -90,3 +90,27 @@ model <- lm(rating ~ ingredients, weights=votes)
 
 head(sort(model$coefficients, decreasing=TRUE), 20)
 
+names_and_votes <- data_uncleaned[,c('name', 'rating', 'votes')]
+
+transform_data <- function(x) {
+  split_name <- t(t(unlist(strsplit(x['name'], split=' ', fixed=TRUE))))
+  cbind(x['rating'], cbind(x['votes'], tolower(split_name)))
+}
+
+data <- apply(names_and_votes, 1, transform_data)
+data <- do.call(rbind, data)
+colnames(data) <- c('rating', 'votes', 'word')
+row.names(data) <- NULL
+data <- as.data.frame(data)
+data$rating <- as.numeric(data$rating)
+data$votes <- as.numeric(data$votes)
+library(plyr)
+
+counts <- ddply(data, .(word), summarize, count=length(word))
+counts <- counts[counts$count > 5,]
+
+data <- merge(data, counts, all.x=FALSE, all.y=FALSE)
+
+model <- lm(rating ~ word, data=data, weights=(1/votes))
+
+head(sort(model$coefficients, decreasing=TRUE), 10)
