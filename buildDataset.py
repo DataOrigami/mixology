@@ -22,8 +22,6 @@ def buildListOfDict():
         drink['ingredients'] = []
         for i in xrange(len(recipe)):
             drink['ingredients'].append(recipe[i])
-            #quantity, ing = parseIngredient(recipe[i])
-            #drink['ingredients'].append({'quantity':quantity, 'type':ing})
         dataset.append(drink)
     return dataset
 
